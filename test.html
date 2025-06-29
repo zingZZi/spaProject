@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>바닐라 JS SPA 예제</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        nav { margin-bottom: 20px; }
+        nav a { margin-right: 10px; padding: 10px; text-decoration: none; background: #007bff; color: white; border-radius: 4px; }
+        nav a:hover { background: #0056b3; }
+        #app { min-height: 400px; padding: 20px; border: 1px solid #ddd; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#/" data-link>홈</a>
+        <a href="#/products" data-link>상품목록</a>
+        <a href="#/about" data-link>소개</a>
+        <a href="#/contact" data-link>연락처</a>
+    </nav>
+    
+    <div id="app">
+        <!-- 페이지 내용이 여기에 렌더링됩니다 -->
+    </div>
+
+    <script>
+        // router.js 내용
+        class Router {
+            constructor() {
+                this.routes = {};
+                this.currentRoute = '';
+                
+                // 브라우저 뒤로가기/앞으로가기 처리
+                window.addEventListener('popstate', () => {
+                    this.handleRoute();
+                });
+                
+                // 링크 클릭 처리
+                document.addEventListener('click', (e) => {
+                    if (e.target.matches('[data-link]')) {
+                        e.preventDefault();
+                        this.navigateTo(e.target.getAttribute('href'));
+                    }
+                });
+            }
+            
+            // 라우트 등록
+            addRoute(path, handler) {
+                this.routes[path] = handler;
+            }
+            
+            // 페이지 이동
+            navigateTo(path) {
+                history.pushState(null, null, path);
+                this.handleRoute();
+            }
+            
+            // 현재 경로에 맞는 핸들러 실행
+            handleRoute() {
+                const path = window.location.hash.slice(1) || '/';
+                this.currentRoute = path;
+                
+                // 동적 라우트 처리 (예: /products/:id)
+                const route = this.matchRoute(path);
+                if (route) {
+                    route.handler(route.params);
+                } else {
+                    // 404 페이지
+                    this.render404();
+                }
+            }
+            
+            // 라우트 매칭 (동적 라우트 지원)
+            matchRoute(path) {
+                // 정확히 일치하는 라우트 먼저 확인
+                if (this.routes[path]) {
+                    return { handler: this.routes[path], params: {} };
+                }
+                
+                // 동적 라우트 확인
+                for (const routePath in this.routes) {
+                    const routeRegex = this.pathToRegex(routePath);
+                    const match = path.match(routeRegex);
+                    if (match) {
+                        const params = this.extractParams(routePath, match);
+                        return { handler: this.routes[routePath], params };
+                    }
+                }
+                
+                return null;
+            }
+            
+            // 경로를 정규식으로 변환
+            pathToRegex(path) {
+                return new RegExp('^' + path.replace(/:\w+/g, '([^/]+)') + '$');
+            }
+            
+            // URL 파라미터 추출
+            extractParams(routePath, match) {
+                const params = {};
+                const paramNames = routePath.match(/:\w+/g) || [];
+                paramNames.forEach((param, index) => {
+                    const paramName = param.slice(1); // ':' 제거
+                    params[paramName] = match[index + 1];
+                });
+                return params;
+            }
+            
+            // 404 페이지 렌더링
+            render404() {
+                document.getElementById('app').innerHTML = `
+                    <h1>404 - 페이지를 찾을 수 없습니다</h1>
+                    <p>요청하신 페이지가 존재하지 않습니다.</p>
+                    <a href="#/" data-link>홈으로 돌아가기</a>
+                `;
+            }
+            
+            // 라우터 시작
+            start() {
+                this.handleRoute();
+            }
+        }
+
+        // app.js 내용
+        class App {
+            constructor() {
+                this.router = new Router();
+                this.setupRoutes();
+            }
+            
+            // 라우트 설정
+            setupRoutes() {
+                this.router.addRoute('/', () => this.renderHome());
+                this.router.addRoute('/products', () => this.renderProducts());
+                this.router.addRoute('/products/:id', (params) => this.renderProductDetail(params));
+                this.router.addRoute('/about', () => this.renderAbout());
+                this.router.addRoute('/contact', () => this.renderContact());
+            }
+            
+            // 홈 페이지
+            renderHome() {
+                document.getElementById('app').innerHTML = `
+                    <h1>홈 페이지</h1>
+                    <p>오픈마켓에 오신 것을 환영합니다!</p>
+                    <div>
+                        <h3>인기 상품</h3>
+                        <div style="display: flex; gap: 10px;">
+                            <div style="border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+                                <a href="#/products/1" data-link>스마트폰</a>
+                            </div>
+                            <div style="border: 1px solid #ddd; padding: 10px; border-radius: 4px;">
+                                <a href="#/products/2" data-link>노트북</a>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            // 상품 목록 페이지
+            renderProducts() {
+                const products = [
+                    { id: 1, name: '스마트폰', price: '800,000원' },
+                    { id: 2, name: '노트북', price: '1,200,000원' },
+                    { id: 3, name: '태블릿', price: '600,000원' }
+                ];
+                
+                const productList = products.map(product => `
+                    <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 4px;">
+                        <h3><a href="#/products/${product.id}" data-link>${product.name}</a></h3>
+                        <p>가격: ${product.price}</p>
+                    </div>
+                `).join('');
+                
+                document.getElementById('app').innerHTML = `
+                    <h1>상품 목록</h1>
+                    ${productList}
+                `;
+            }
+            
+            // 상품 상세 페이지
+            renderProductDetail(params) {
+                const productId = params.id;
+                const products = {
+                    '1': { name: '스마트폰', price: '800,000원', description: '최신 스마트폰입니다.' },
+                    '2': { name: '노트북', price: '1,200,000원', description: '고성능 노트북입니다.' },
+                    '3': { name: '태블릿', price: '600,000원', description: '휴대용 태블릿입니다.' }
+                };
+                
+                const product = products[productId];
+                
+                if (product) {
+                    document.getElementById('app').innerHTML = `
+                        <h1>${product.name}</h1>
+                        <p><strong>가격:</strong> ${product.price}</p>
+                        <p><strong>설명:</strong> ${product.description}</p>
+                        <button onclick="alert('장바구니에 추가되었습니다!')">장바구니 담기</button>
+                        <br><br>
+                        <a href="#/products" data-link>← 상품 목록으로 돌아가기</a>
+                    `;
+                } else {
+                    document.getElementById('app').innerHTML = `
+                        <h1>상품을 찾을 수 없습니다</h1>
+                        <a href="#/products" data-link>상품 목록으로 돌아가기</a>
+                    `;
+                }
+            }
+            
+            // 소개 페이지
+            renderAbout() {
+                document.getElementById('app').innerHTML = `
+                    <h1>소개</h1>
+                    <p>저희 오픈마켓은 다양한 상품을 제공하는 온라인 쇼핑몰입니다.</p>
+                    <p>고객 만족을 최우선으로 하여 최고의 서비스를 제공하겠습니다.</p>
+                `;
+            }
+            
+            // 연락처 페이지
+            renderContact() {
+                document.getElementById('app').innerHTML = `
+                    <h1>연락처</h1>
+                    <p><strong>전화:</strong> 02-1234-5678</p>
+                    <p><strong>이메일:</strong> info@openmarket.com</p>
+                    <p><strong>주소:</strong> 서울시 강남구 테헤란로 123</p>
+                    <form onsubmit="alert('문의가 접수되었습니다!'); return false;">
+                        <h3>문의하기</h3>
+                        <input type="text" placeholder="이름" style="width: 200px; padding: 5px; margin: 5px 0;"><br>
+                        <input type="email" placeholder="이메일" style="width: 200px; padding: 5px; margin: 5px 0;"><br>
+                        <textarea placeholder="문의내용" style="width: 200px; height: 100px; padding: 5px; margin: 5px 0;"></textarea><br>
+                        <button type="submit">전송</button>
+                    </form>
+                `;
+            }
+            
+            // 앱 시작
+            start() {
+                this.router.start();
+            }
+        }
+
+        // 앱 실행
+        const app = new App();
+        app.start();
+    </script>
+</body>
+</html>
