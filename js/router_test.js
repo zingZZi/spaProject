@@ -9,23 +9,15 @@ const routes = {
   "/signin": SignIn,
 };
 
-export default async function router() {
-  const app = document.getElementById("app");
+export default function route() {
   const path = location.hash.replace("#", "") || "/";
+  const route = routes[path];
+  const app = document.getElementById("app");
 
-  // if (path.startsWith("/product/")) {
-  //   const id = path.split("/")[2];
-  //   await ProductDetailPage(id);
-  //   return;
-  // }
-
-  const renderPage = routes[path];
-
-  if (renderPage) {
+  if (route) {
     app.innerHTML = "";
-    await renderPage();
+    route();
   } else {
-    app.innerHTML = "";
     Render404();
   }
 }

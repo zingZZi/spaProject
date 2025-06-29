@@ -1,6 +1,9 @@
-import router from './router.js';
+import route from "./router_test.js";
 
-document.addEventListener('DOMContentLoaded' ,() => {
-  router();
-})
-window.addEventListener('hashchange', router);  
+document.addEventListener("DOMContentLoaded", function () {
+  route();
+});
+
+window.addEventListener("hashchange", function () {
+  route();
+});
